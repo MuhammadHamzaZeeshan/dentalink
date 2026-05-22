@@ -17,7 +17,7 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=20, choices=CHOICES, default='CLINIC')
 
     def __str__(self):
-        return f"{self.username} - {self.get_role_display()}"
+        return f"{self.shop_name or self.username} - {self.get_role_display()}"
 
 
 # ==========================================
@@ -47,6 +47,9 @@ class VendorStockListing(models.Model):
     product = models.ForeignKey(DentalProduct, on_delete=models.CASCADE, related_name='listings')
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity_available = models.PositiveIntegerField()
+    is_available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.distributor.shop_name or self.distributor.username} - {self.product.equipment_name} : {self.unit_price} PKR/UNIT"
@@ -68,5 +71,3 @@ class ProcurementOrder(models.Model):
 
     def __str__(self):
         return f"{self.clinic.shop_name or self.clinic.username} bought {self.units_requested} {self.listing.product.equipment_name} at {self.listing.unit_price} PKR/UNIT"
-
-
