@@ -17,7 +17,7 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=20, choices=CHOICES, default='CLINIC')
 
     def __str__(self):
-        return f"{self.shop_name or self.username} - {self.get_role_display()}"
+        return f"{self.shop_name or self.username} - {self.get_role_display()} - {self.id}"
 
 
 # ==========================================
@@ -51,6 +51,9 @@ class VendorStockListing(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('distributor', 'product')
+
     def __str__(self):
         return f"{self.distributor.shop_name or self.distributor.username} - {self.product.equipment_name} : {self.unit_price} PKR/UNIT"
 
@@ -66,7 +69,17 @@ class ProcurementOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        self.total_invoice_cost = self.listing.unit_price * self.units_requested
+        # 1. If self.listing isn't fully loaded in memory yet, fetch it safely using listing_id
+        if not hasattr(self, 'listing') or self.listing is None:
+            from .models import VendorStockListing
+            listing_obj = VendorStockListing.objects.get(id=self.listing_id)
+        else:
+            listing_obj = self.listing
+        
+        self.total_invoice_cost = listing_obj.unit_price * self.units_requested
+        if self.pk is None:
+            listing_obj.quantity_available -= self.units_requested
+            listing_obj.save()
         super().save(*args, **kwargs)
 
     def __str__(self):
